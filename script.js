@@ -75,7 +75,7 @@ class SpotifyManager {
         this.accessToken = config.get('accessToken');
         this.refreshToken = localStorage.getItem('spotify_refresh_token') || '';
         this.tokenExpiry = localStorage.getItem('spotify_token_expiry') || 0;
-        this.backendUrl = 'https://monoplaying.vercel.app/api/auth'; // Update with your Vercel URL
+        this.backendUrl = 'https://mono-now-playing-widget-obs.vercel.app/api/auth';
         this.redirectUri = window.location.origin + window.location.pathname;
         this.handleCallback();
     }
