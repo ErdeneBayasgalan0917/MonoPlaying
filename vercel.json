@@ -1,0 +1,18 @@
+{
+  "buildCommand": "echo 'No build needed'",
+  "public": false,
+  "env": [
+    {
+      "key": "SPOTIFY_CLIENT_ID",
+      "description": "Your Spotify Client ID"
+    },
+    {
+      "key": "SPOTIFY_CLIENT_SECRET",
+      "description": "Your Spotify Client Secret"
+    },
+    {
+      "key": "REDIRECT_URI",
+      "value": "https://erdenebaygalan0917.github.io/MonoPlaying/"
+    }
+  ]
+}

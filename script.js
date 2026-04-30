@@ -73,40 +73,121 @@ class SpotifyManager {
         this.config = config;
         this.clientId = config.get('clientId');
         this.accessToken = config.get('accessToken');
+        this.refreshToken = localStorage.getItem('spotify_refresh_token') || '';
+        this.tokenExpiry = localStorage.getItem('spotify_token_expiry') || 0;
+        this.backendUrl = 'https://monoplaying.vercel.app/api/auth'; // Update with your Vercel URL
         this.redirectUri = window.location.origin + window.location.pathname;
+        this.handleCallback();
     }
 
-    // Spotify Authorization Flow
+    // Spotify Authorization Flow (redirects to Spotify)
     authorize() {
         if (!this.clientId) {
-            if (prompt('Spotify Client ID not found. Enter your Client ID:')) {
-                this.clientId = event.target.value;
-                this.config.set('clientId', this.clientId);
+            const id = prompt('Enter your Spotify Client ID:');
+            if (id) {
+                this.clientId = id;
+                this.config.set('clientId', id);
             } else {
-                showStatus('❌ Client ID required for authentication', 'error');
+                showStatus('❌ Client ID required', 'error');
                 return;
             }
         }
 
         const scope = 'user-read-currently-playing user-read-private';
-        const authUrl = `https://accounts.spotify.com/authorize?client_id=${this.clientId}&response_type=code&redirect_uri=${encodeURIComponent(this.redirectUri)}&scope=${encodeURIComponent(scope)}`;
-
+        const authUrl = `https://accounts.spotify.com/authorize?client_id=${this.clientId}&response_type=code&redirect_uri=${encodeURIComponent(this.redirectUri)}&scope=${encodeURIComponent(scope)}&show_dialog=true`;
         window.location.href = authUrl;
     }
 
-    // Handle OAuth callback
+    // Handle OAuth callback after redirect from Spotify
     async handleCallback() {
         const params = new URLSearchParams(window.location.search);
         const code = params.get('code');
+        const error = params.get('error');
+
+        if (error) {
+            showStatus(`❌ Authorization failed: ${error}`, 'error');
+            return;
+        }
 
         if (code) {
-            // In production, exchange code for token on your backend
-            // For now, user must manually set token
-            showStatus('✅ Code received. Please set your Access Token manually.', 'success');
+            await this.exchangeCodeForToken(code);
+            // Clean up URL
+            window.history.replaceState({}, document.title, window.location.pathname);
         }
     }
 
-    // Set access token manually
+    // Exchange authorization code for access token via backend
+    async exchangeCodeForToken(code) {
+        try {
+            showStatus('🔄 Getting access token...', 'info');
+            const response = await fetch(this.backendUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ code, action: 'auth' })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Backend error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            this.setTokens(data.access_token, data.refresh_token, data.expires_in);
+            showStatus('✅ Successfully authorized with Spotify!', 'success');
+        } catch (error) {
+            console.error('Token exchange error:', error);
+            showStatus('❌ Failed to get access token. Try again.', 'error');
+        }
+    }
+
+    // Store tokens and set expiry time
+    setTokens(accessToken, refreshToken, expiresIn) {
+        this.accessToken = accessToken;
+        this.refreshToken = refreshToken;
+        this.tokenExpiry = Date.now() + (expiresIn * 1000);
+
+        this.config.set('accessToken', accessToken);
+        localStorage.setItem('spotify_refresh_token', refreshToken);
+        localStorage.setItem('spotify_token_expiry', this.tokenExpiry);
+    }
+
+    // Check if token is expired and refresh if needed
+    async refreshAccessToken() {
+        if (!this.refreshToken) {
+            return false;
+        }
+
+        if (Date.now() < this.tokenExpiry - 60000) {
+            // Token still valid for at least 1 minute
+            return true;
+        }
+
+        try {
+            const response = await fetch(this.backendUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ refresh_token: this.refreshToken, action: 'refresh' })
+            });
+
+            if (!response.ok) {
+                throw new Error('Token refresh failed');
+            }
+
+            const data = await response.json();
+            this.setTokens(data.access_token, data.refresh_token, data.expires_in);
+            return true;
+        } catch (error) {
+            console.error('Token refresh error:', error);
+            this.accessToken = '';
+            this.refreshToken = '';
+            return false;
+        }
+    }
+
+    // Set access token manually (fallback)
     setAccessToken(token) {
         this.accessToken = token;
         this.config.set('accessToken', token);
@@ -117,7 +198,14 @@ class SpotifyManager {
     // Fetch currently playing track
     async getCurrentlyPlaying() {
         if (!this.accessToken) {
-            showStatus('❌ No access token. Authorize with Spotify first.', 'error');
+            showStatus('❌ No access token. Click "Authorize with Spotify" button.', 'error');
+            return null;
+        }
+
+        // Refresh token if needed
+        const tokenValid = await this.refreshAccessToken();
+        if (!tokenValid) {
+            showStatus('❌ Session expired. Please authorize again.', 'error');
             return null;
         }
 
@@ -134,9 +222,9 @@ class SpotifyManager {
 
             if (!response.ok) {
                 if (response.status === 401) {
-                    showStatus('❌ Token expired. Please re-authorize.', 'error');
-                    localStorage.removeItem('spotify_token');
-                    this.accessToken = '';
+                    // Token might be invalid, try to refresh
+                    await this.refreshAccessToken();
+                    showStatus('❌ Token expired. Please authorize again.', 'error');
                 }
                 return null;
             }
@@ -244,11 +332,7 @@ class UIManager {
 
         // Buttons
         document.getElementById('auth-button').addEventListener('click', () => {
-            // For simplicity, directly ask for access token
-            const token = prompt('Paste your Spotify Access Token here:\n\n(Get it from https://developer.spotify.com/console/get-currently-playing)');
-            if (token) {
-                spotifyManager.setAccessToken(token);
-            }
+            spotifyManager.authorize();
         });
 
         document.getElementById('save-config').addEventListener('click', () => {
