@@ -73,7 +73,7 @@ async function refreshToken(refresh_token) {
     return spotifyRequest(options, body);
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Origin', 'https://erdenebaygalan0917.github.io');
@@ -135,4 +135,4 @@ export default async function handler(req, res) {
         console.error('Auth error:', error);
         res.status(500).json({ error: error.message });
     }
-}
+};
