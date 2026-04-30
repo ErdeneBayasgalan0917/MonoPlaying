@@ -335,6 +335,13 @@ class UIManager {
             spotifyManager.authorize();
         });
 
+        document.getElementById('manual-paste-btn').addEventListener('click', () => {
+            const token = prompt('Paste your Spotify Access Token:\n\n(Get from: https://developer.spotify.com/console/get-currently-playing/)\n\nTokens expire after ~1 hour.');
+            if (token && token.trim()) {
+                spotifyManager.setAccessToken(token.trim());
+            }
+        });
+
         document.getElementById('save-config').addEventListener('click', () => {
             this.config.save();
             showStatus('✅ Configuration saved!', 'success');

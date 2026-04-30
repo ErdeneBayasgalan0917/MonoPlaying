@@ -19,9 +19,11 @@
                 <input type="text" id="clientId" placeholder="Your Client ID">
                 
                 <label>Spotify Access Token:</label>
-                <input type="text" id="accessToken" placeholder="Your Access Token (or use Auth below)">
+                <input type="text" id="accessToken" placeholder="Paste token here or click Authorize">
+                <small style="color: #ccc; display: block; margin: 5px 0;">Get token: <a href="https://developer.spotify.com/console/get-currently-playing/" target="_blank" style="color: #1DB954;">Spotify Developer Console</a></small>
                 
                 <button id="auth-button" class="auth-btn">🔐 Authorize with Spotify</button>
+                <button id="manual-paste-btn" class="auth-btn" style="margin-left: 5px;">📋 Paste Token</button>
             </div>
 
             <!-- Display Options -->
