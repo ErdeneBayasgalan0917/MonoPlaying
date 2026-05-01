@@ -143,14 +143,18 @@ class SpotifyManager {
 
     // Store tokens and set expiry time
     setTokens(accessToken, refreshToken, expiresIn) {
-        this.accessToken = accessToken;
+    this.accessToken = accessToken;
+    // Only update refresh token if a new one is provided
+    if (refreshToken) {
         this.refreshToken = refreshToken;
-        this.tokenExpiry = Date.now() + (expiresIn * 1000);
-
-        this.config.set('accessToken', accessToken);
         localStorage.setItem('spotify_refresh_token', refreshToken);
-        localStorage.setItem('spotify_token_expiry', this.tokenExpiry);
     }
+    
+    this.tokenExpiry = Date.now() + (expiresIn * 1000);
+    this.config.set('accessToken', accessToken);
+    localStorage.setItem('spotify_token_expiry', this.tokenExpiry);
+    }
+
 
     // Check if token is expired and refresh if needed
     async refreshAccessToken() {
